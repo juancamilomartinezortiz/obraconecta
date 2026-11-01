@@ -1,0 +1,20 @@
+:host { display: block; }
+.auth { display: grid; min-height: calc(100dvh - var(--header-h)); }
+@media (min-width: 960px) { .auth { grid-template-columns: .9fr 1.1fr; } }
+.side { display: none; position: relative; padding: 56px; flex-direction: column; justify-content: space-between; }
+@media (min-width: 960px) { .side { display: flex; } }
+.side h2 { color: #fff; font-size: 2.3rem; font-weight: 800; letter-spacing: -.03em; max-width: 14ch; }
+.side p { color: rgb(255 255 255 / .85); max-width: 40ch; }
+.side ul { list-style: none; padding: 0; margin: 24px 0 0; display: flex; flex-direction: column; gap: 14px; }
+.side li { display: flex; gap: 10px; color: rgb(255 255 255 / .92); }
+.side li app-icon { color: var(--accent); margin-top: 2px; }
+.main { display: flex; align-items: flex-start; justify-content: center; padding: 32px 16px 120px; }
+@media (min-width: 960px) { .main { align-items: center; padding: 48px; } }
+.form-box { width: 100%; max-width: 480px; }
+.form-box h1 { font-size: clamp(1.8rem, 3vw, 2.3rem); margin-bottom: 6px; }
+.form-box > p { color: var(--ink-2); margin-bottom: 24px; }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r); background: var(--danger-soft); color: var(--danger); font-weight: 500; margin-bottom: 16px; }
+.switch-link { text-align: center; margin-top: 22px; color: var(--ink-2); }
+.pw { position: relative; }
+.pw .input { padding-right: 52px; }
+.pw button { position: absolute; right: 4px; top: 2px; }

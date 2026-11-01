@@ -1,0 +1,127 @@
+<div class="container page">
+  <a [routerLink]="editing() ? '/panel/mis-trabajos' : '/'" class="back"><app-icon name="arrow-left" [size]="16" />{{ editing() ? 'Mis trabajos' : 'Inicio' }}</a>
+
+  <div class="page-head">
+    <div>
+      <h1>{{ editing() ? 'Editar trabajo' : 'Publica tu trabajo' }}</h1>
+      <p>{{ editing() ? 'Los cambios se ven de inmediato en la publicación.' : 'Los maestros de tu zona lo verán y se podrán postular.' }}</p>
+    </div>
+  </div>
+
+  @if (loadingJob()) {
+    <div class="sk" style="height:420px;border-radius:18px"></div>
+  } @else {
+    <div class="cols">
+      <form class="form card" (ngSubmit)="step() === 1 ? next() : save()" novalidate>
+        <ol class="steps" aria-label="Pasos">
+          <li [class.on]="step() >= 1" [class.done]="step() > 1"><button type="button" (click)="step.set(1)"><span>1</span>Qué y dónde</button></li>
+          <li [class.on]="step() >= 2"><button type="button" (click)="next()" [disabled]="!step1Valid()"><span>2</span>Pago, fechas y detalle</button></li>
+        </ol>
+
+        @if (step() === 1) {
+          <div class="stack">
+            <div class="field">
+              <label for="title">¿Qué necesitas?</label>
+              <input id="title" class="input big" name="title" [(ngModel)]="d.title" (ngModelChange)="touch()" maxlength="140" placeholder="Ej: Enchape de baño completo" />
+              @if (!d.title) {
+                <div class="chips ideas">
+                  @for (t of ideas; track t) { <button type="button" class="chip" (click)="pickIdea(t)">{{ t }}</button> }
+                </div>
+              }
+              @if (errs()['title']) { <span class="error">{{ errs()['title'] }}</span> }
+            </div>
+
+            <fieldset class="field">
+              <legend class="label">Oficio</legend>
+              <div class="trades">
+                @for (s of catalog.specialties(); track s.id) {
+                  <button type="button" class="trade" [class.on]="d.specialty_id === s.id" [attr.aria-pressed]="d.specialty_id === s.id" (click)="pickSpecialty(s.id)">
+                    <app-icon [name]="s.icon || 'hardhat'" [size]="24" [stroke]="1.6" />{{ s.name }}
+                  </button>
+                }
+              </div>
+            </fieldset>
+
+            <div class="grid-2">
+              <div class="field">
+                <label for="city">Ciudad</label>
+                <select id="city" class="select" name="city" [(ngModel)]="d.city_id" (ngModelChange)="touch()">
+                  <option [ngValue]="null">Selecciona</option>
+                  @for (c of catalog.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label for="addr">Barrio o sector</label>
+                <input id="addr" class="input" name="addr" [(ngModel)]="d.address" (ngModelChange)="touch()" placeholder="Ej: La Esmeralda" />
+                <span class="hint">La dirección exacta la compartes solo con quien contrates.</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-lg" type="submit" [disabled]="!step1Valid()">Continuar</button>
+          </div>
+        } @else {
+          <div class="stack">
+            <fieldset class="field">
+              <legend class="label">Presupuesto</legend>
+              <div class="seg">
+                @for (t of budgetTypes; track t.v) {
+                  <button type="button" [class.on]="d.budget_type === t.v" (click)="setType(t.v)">{{ t.label }}</button>
+                }
+              </div>
+              <div class="input-prefix"><span>$</span>
+                <input class="input big num" type="number" min="0" step="10000" name="budget" aria-label="Valor del presupuesto" [(ngModel)]="d.budget" (ngModelChange)="touch()" placeholder="0" />
+              </div>
+              <span class="hint">{{ budgetHint() }}</span>
+            </fieldset>
+
+            <div class="grid-2">
+              <div class="field">
+                <label for="start">Fecha de inicio</label>
+                <input id="start" class="input" type="date" name="start" [min]="today" [(ngModel)]="d.start_date" (ngModelChange)="touch()" />
+              </div>
+              <div class="field">
+                <label for="days">Duración estimada (días)</label>
+                <input id="days" class="input num" type="number" min="1" max="730" name="days" [(ngModel)]="d.days" (ngModelChange)="touch()" placeholder="Ej: 10" />
+              </div>
+            </div>
+
+            <div class="field">
+              <span class="label" id="ppl">Personas que necesitas</span>
+              <div class="stepper" role="group" aria-labelledby="ppl">
+                <button type="button" class="btn" aria-label="Quitar una persona" (click)="people(-1)" [disabled]="d.workers_needed <= 1"><app-icon name="minus" /></button>
+                <output class="num">{{ d.workers_needed }}</output>
+                <button type="button" class="btn" aria-label="Agregar una persona" (click)="people(1)"><app-icon name="plus" /></button>
+                <span class="hint">{{ d.workers_needed === 1 ? 'Un maestro o especialista' : 'Por ejemplo, 1 maestro y ' + (d.workers_needed - 1) + (d.workers_needed === 2 ? ' ayudante' : ' ayudantes') }}</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="desc">Describe el trabajo</label>
+              <textarea id="desc" class="textarea" rows="6" name="desc" [class.invalid]="errs()['description']" [(ngModel)]="d.description" (ngModelChange)="touch()" maxlength="3000"
+                placeholder="Medidas, estado actual, si tú pones el material, horarios en que se puede trabajar..."></textarea>
+              @if (errs()['description']) { <span class="error">{{ errs()['description'] }}</span> }
+              @else { <span class="hint">{{ d.description.length }} / 3000. Entre más claro, mejores propuestas recibes.</span> }
+            </div>
+
+            <div class="actions">
+              <button type="button" class="btn btn-lg" (click)="step.set(1)">Atrás</button>
+              <button class="btn btn-accent btn-lg" type="submit" [disabled]="saving()">
+                @if (saving()) { <span class="spinner"></span> } {{ editing() ? 'Guardar cambios' : 'Publicar trabajo' }}
+              </button>
+            </div>
+          </div>
+        }
+      </form>
+
+      <aside class="preview">
+        <p class="pv-label"><app-icon name="eye" [size]="16" />Así lo verán los maestros</p>
+        <app-job-card [j]="preview()" />
+        <ul class="tips">
+          <li><app-icon name="check" [size]="16" />Un título concreto recibe más postulaciones.</li>
+          <li><app-icon name="check" [size]="16" />Incluye medidas aproximadas en la descripción.</li>
+          <li><app-icon name="check" [size]="16" />Tu celular solo se comparte con quien aceptes.</li>
+        </ul>
+      </aside>
+    </div>
+  }
+</div>

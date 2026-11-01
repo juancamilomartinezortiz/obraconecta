@@ -1,0 +1,119 @@
+<div class="page-head">
+  <div>
+    <h1>Mis trabajos</h1>
+    <p>Revisa quién se postuló y contrata desde aquí.</p>
+  </div>
+  <a routerLink="/publicar" class="btn btn-accent"><app-icon name="plus" />Publicar trabajo</a>
+</div>
+
+@if (jobs() && jobs()!.length) {
+  <div class="kpis">
+    <div><strong class="num">{{ totals().open }}</strong><span>ofertas abiertas</span></div>
+    <div [class.hot]="totals().pending > 0"><strong class="num">{{ totals().pending }}</strong><span>postulaciones nuevas</span></div>
+    <div><strong class="num">{{ totals().hired }}</strong><span>maestros contratados</span></div>
+  </div>
+}
+
+@if (jobs() === null) {
+  <div class="list">@for (i of [1,2,3]; track i) { <div class="sk" style="height:140px;border-radius:16px"></div> }</div>
+} @else if (jobs()!.length) {
+  <div class="list">
+    @for (j of jobs(); track j.id) {
+      <article class="job card" [attr.data-s]="j.status">
+        <div class="j-top">
+          <span class="ic"><app-icon [name]="j.specialty?.icon || 'hardhat'" [size]="22" /></span>
+          <div class="j-text">
+            <a [routerLink]="['/trabajos', j.id]" class="j-title">{{ j.title }}</a>
+            <p class="j-meta">{{ j.city?.name }}, inicia {{ j.start_date | shortDate }}. Publicado {{ j.created_at | timeAgo }}.</p>
+          </div>
+          <span class="st" [attr.data-s]="j.status">{{ JOB_STATUS[j.status] }}</span>
+        </div>
+        <div class="j-bottom">
+          <button type="button" class="apps-btn" (click)="openApps(j)">
+            <app-icon name="users" [size]="18" />
+            <strong class="num">{{ j.applications_count ?? 0 }}</strong> {{ (j.applications_count ?? 0) === 1 ? 'postulado' : 'postulados' }}
+            @if (j.new_applications_count) { <span class="new num">{{ j.new_applications_count }} {{ j.new_applications_count === 1 ? 'nuevo' : 'nuevos' }}</span> }
+            <app-icon name="chevron-right" [size]="16" />
+          </button>
+          <div class="j-actions">
+            <a [routerLink]="['/publicar', j.id]" class="btn btn-sm btn-ghost"><app-icon name="edit" [size]="16" />Editar</a>
+            @if (j.status === 'open') {
+              <button type="button" class="btn btn-sm btn-ghost" (click)="setStatus(j, 'paused')">Pausar</button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="setStatus(j, 'closed')">Cerrar</button>
+            } @else {
+              <button type="button" class="btn btn-sm btn-ghost" (click)="setStatus(j, 'open')">Volver a abrir</button>
+            }
+            @if (!j.accepted_count) {
+              <button type="button" class="btn btn-sm btn-ghost danger" (click)="confirmDelete.set(j)" aria-label="Eliminar oferta"><app-icon name="trash" [size]="16" /></button>
+            }
+          </div>
+        </div>
+      </article>
+    }
+  </div>
+} @else {
+  <app-empty icon="layers" title="Aún no has publicado trabajos" text="Publica lo que necesitas construir o arreglar y recibe postulaciones de maestros de tu zona.">
+    <a routerLink="/publicar" class="btn btn-accent">Publicar mi primer trabajo</a>
+  </app-empty>
+}
+
+<!-- Postulaciones de una oferta -->
+<app-modal [open]="!!selected()" [title]="'Postulaciones: ' + (selected()?.title ?? '')" [wide]="true" (closed)="selected.set(null)">
+  @if (apps() === null) {
+    <div class="stack">@for (i of [1,2]; track i) { <div class="sk" style="height:120px"></div> }</div>
+  } @else if (apps()!.length) {
+    <ul class="apps">
+      @for (a of apps(); track a.id) {
+        <li class="app" [attr.data-s]="a.status">
+          <div class="a-head">
+            <app-avatar [name]="a.worker?.user?.name" [src]="a.worker?.user?.photo_url" [size]="52" [verified]="!!a.worker?.user?.is_verified" />
+            <div class="a-id">
+              <a [routerLink]="['/maestros', a.worker_profile_id]" target="_blank" class="a-name">{{ a.worker?.user?.name }}</a>
+              <div class="a-sub">
+                @if (toNum(a.worker?.rating_avg) > 0) { <app-stars [rating]="a.worker!.rating_avg" [size]="13" /><span class="num">{{ toNum(a.worker?.rating_avg).toFixed(1) }}</span> }
+                <span>{{ a.worker?.years_experience }} años, {{ a.worker?.jobs_done }} trabajos</span>
+                @if (a.is_invitation) { <span class="tag yellow">Invitado por ti</span> }
+              </div>
+            </div>
+            <div class="a-rate">
+              <strong class="num">{{ (a.rate ?? selected()?.budget) | shortMoney }}</strong>
+              <span>{{ suffix(selected()) }}</span>
+            </div>
+          </div>
+          @if (a.message) { <p class="a-msg">"{{ a.message }}"</p> }
+          <div class="a-actions">
+            @switch (a.status) {
+              @case ('accepted') {
+                <span class="tag ok"><app-icon name="check" [size]="14" />Contratado</span>
+                @if (wa(a); as link) { <a [href]="link" target="_blank" rel="noopener" class="btn btn-ok btn-sm"><app-icon name="whatsapp" [size]="18" />WhatsApp {{ a.worker?.user?.phone }}</a> }
+                <a routerLink="/panel/contratos" class="btn btn-sm">Ver contratación</a>
+              }
+              @case ('rejected') { <span class="tag danger">Descartado</span> }
+              @default {
+                @if (a.is_invitation) {
+                  <span class="tag">Esperando respuesta del maestro</span>
+                } @else {
+                  <button type="button" class="btn btn-primary btn-sm" (click)="decide(a, 'accepted')" [disabled]="busy() === a.id"><app-icon name="check" [size]="18" />Aceptar y ver contacto</button>
+                  <button type="button" class="btn btn-sm btn-ghost" (click)="decide(a, 'rejected')" [disabled]="busy() === a.id">Descartar</button>
+                  <a [routerLink]="['/maestros', a.worker_profile_id]" target="_blank" class="btn btn-sm btn-ghost">Ver obras</a>
+                }
+              }
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  } @else {
+    <app-empty icon="users" title="Todavía nadie se ha postulado" text="Mientras tanto, puedes buscar maestros e invitarlos directamente a esta oferta.">
+      <a routerLink="/maestros" [queryParams]="{ especialidad: selected()?.specialty_id }" class="btn btn-primary">Buscar maestros de {{ selected()?.specialty?.name?.toLowerCase() }}</a>
+    </app-empty>
+  }
+</app-modal>
+
+<app-modal [open]="!!confirmDelete()" title="¿Eliminar esta oferta?" (closed)="confirmDelete.set(null)">
+  <p>Se borrará <strong>{{ confirmDelete()?.title }}</strong> y sus postulaciones. Esta acción no se puede deshacer.</p>
+  <div class="confirm">
+    <button type="button" class="btn" (click)="confirmDelete.set(null)">Cancelar</button>
+    <button type="button" class="btn btn-dark" (click)="remove()">Eliminar oferta</button>
+  </div>
+</app-modal>

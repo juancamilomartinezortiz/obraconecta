@@ -1,0 +1,95 @@
+<div class="container page">
+  <div class="page-head">
+    <div>
+      <h1>{{ specialtyName() ? specialtyName() + ' en ' + (cityName() || 'el Cauca') : 'Maestros de obra en ' + (cityName() || 'el Cauca') }}</h1>
+      <p>
+        @if (result(); as r) { {{ r.total }} {{ r.total === 1 ? 'perfil encontrado' : 'perfiles encontrados' }} } @else { Buscando perfiles }
+      </p>
+    </div>
+  </div>
+
+  <div class="searchbar">
+    <label class="sbox">
+      <app-icon name="search" />
+      <span class="sr-only">Buscar por nombre, oficio o barrio</span>
+      <input type="search" class="input" placeholder="Nombre, oficio o barrio" [(ngModel)]="qText" (ngModelChange)="onType($event)" />
+    </label>
+    <select class="select sort" aria-label="Ordenar" [ngModel]="filters().orden" (ngModelChange)="set({ orden: $event })">
+      <option value="rating">Mejor calificados</option>
+      <option value="jobs">Más trabajos hechos</option>
+      <option value="experience">Más experiencia</option>
+      <option value="price">Menor tarifa</option>
+    </select>
+    <button type="button" class="btn filters-btn" (click)="drawer.set(true)">
+      <app-icon name="sliders" />Filtros
+      @if (activeCount()) { <span class="count">{{ activeCount() }}</span> }
+    </button>
+  </div>
+
+  <div class="chips scroll trades-row" role="group" aria-label="Oficio">
+    <button type="button" class="chip" [class.on]="!filters().especialidad" (click)="set({ especialidad: null })">Todos</button>
+    @for (s of catalog.specialties(); track s.id) {
+      <button type="button" class="chip" [class.on]="filters().especialidad === s.id" (click)="toggleSpecialty(s.id)">
+        <app-icon [name]="s.icon || 'hardhat'" [size]="16" />{{ s.name }}
+      </button>
+    }
+  </div>
+
+  <div class="layout">
+    <aside class="filters" [class.open]="drawer()" aria-label="Filtros">
+      <div class="f-head">
+        <h2>Filtros</h2>
+        <button type="button" class="btn-icon close" aria-label="Cerrar filtros" (click)="drawer.set(false)"><app-icon name="x" /></button>
+      </div>
+
+      <div class="field">
+        <label for="f-city">Ciudad</label>
+        <select id="f-city" class="select" [ngModel]="filters().ciudad" (ngModelChange)="set({ ciudad: $event })">
+          <option [ngValue]="null">Todas</option>
+          @for (c of catalog.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+        </select>
+      </div>
+
+      <fieldset class="field">
+        <legend class="label">Calificación mínima</legend>
+        <div class="seg">
+          @for (m of [null, 3, 4, 4.5]; track m) {
+            <button type="button" [class.on]="filters().min === m" (click)="set({ min: m })">{{ m ? (m + '').replace('.', ',') + '+' : 'Todas' }}</button>
+          }
+        </div>
+      </fieldset>
+
+      <label class="switch">
+        <input type="checkbox" [ngModel]="filters().verificados" (ngModelChange)="set({ verificados: $event })" />
+        Solo identidad verificada
+      </label>
+      <label class="switch">
+        <input type="checkbox" [ngModel]="filters().disponibles" (ngModelChange)="set({ disponibles: $event })" />
+        Disponibles ahora
+      </label>
+
+      <div class="f-actions">
+        <button type="button" class="btn btn-ghost" (click)="clear()" [disabled]="!activeCount() && !filters().q">Limpiar filtros</button>
+        <button type="button" class="btn btn-primary show-results" (click)="drawer.set(false)">Ver {{ result()?.total ?? '' }} resultados</button>
+      </div>
+    </aside>
+    @if (drawer()) { <div class="scrim" (click)="drawer.set(false)"></div> }
+
+    <section class="results" [class.dim]="loading() && result()">
+      @if (!result()) {
+        <div class="grid">
+          @for (i of [1,2,3,4,5,6]; track i) { <div class="sk" style="height:300px;border-radius:18px"></div> }
+        </div>
+      } @else if (result()!.data.length) {
+        <div class="grid">
+          @for (w of result()!.data; track w.id) { <app-worker-card [w]="w" /> }
+        </div>
+        <app-pager [page]="result()!.current_page" [last]="result()!.last_page" (go)="page($event)" />
+      } @else {
+        <app-empty icon="search" title="No encontramos maestros con esos filtros" text="Prueba con otra ciudad, quita la calificación mínima o busca un oficio parecido.">
+          <button type="button" class="btn btn-primary" (click)="clear()">Quitar filtros</button>
+        </app-empty>
+      }
+    </section>
+  </div>
+</div>

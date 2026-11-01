@@ -1,0 +1,130 @@
+@if (notFound()) {
+  <div class="container page">
+    <app-empty icon="briefcase" title="Este trabajo ya no está disponible" text="Puede que lo hayan cerrado o que ya hayan contratado a alguien.">
+      <a routerLink="/trabajos" class="btn btn-primary">Ver otros trabajos</a>
+    </app-empty>
+  </div>
+} @else if (job(); as j) {
+  <div class="container page">
+    <a routerLink="/trabajos" class="back"><app-icon name="arrow-left" [size]="16" />Trabajos</a>
+
+    <div class="cols">
+      <article class="main card">
+        <div class="top">
+          <span class="ic"><app-icon [name]="j.specialty?.icon || 'hardhat'" [size]="30" /></span>
+          <div>
+            <p class="meta">{{ j.specialty?.name }}, publicado {{ j.created_at | timeAgo }}</p>
+            <h1>{{ j.title }}</h1>
+            @if (j.status !== 'open') { <span class="tag warn">Oferta {{ JOB_STATUS[j.status].toLowerCase() }}</span> }
+          </div>
+        </div>
+
+        <!-- Ficha técnica tipo rótulo de plano -->
+        <dl class="rotulo">
+          <div class="r-pay"><dt>Presupuesto</dt><dd class="num">{{ j.budget | money }}<small>{{ suffix() }}</small></dd></div>
+          <div><dt>Ubicación</dt><dd>{{ j.city?.name }}@if (j.address) {<small>{{ j.address }}</small>}</dd></div>
+          <div><dt>Inicio</dt><dd>{{ j.start_date | shortDate: true }}@if (endDate()) {<small>hasta {{ endDate() | shortDate }}</small>}</dd></div>
+          <div><dt>Duración</dt><dd class="num">{{ j.days ? j.days + ' días' : 'Por definir' }}</dd></div>
+          <div><dt>Personas</dt><dd class="num">{{ j.workers_needed }}</dd></div>
+          <div><dt>Postulados</dt><dd class="num">{{ j.applications_count ?? 0 }}</dd></div>
+        </dl>
+
+        <h2>Descripción del trabajo</h2>
+        <p class="desc">{{ j.description }}</p>
+
+        <div class="tools">
+          <button type="button" class="btn btn-ghost btn-sm" (click)="share()"><app-icon name="send" [size]="16" />Compartir</button>
+          @if (auth.isLoggedIn() && !data()!.is_owner) {
+            <button type="button" class="btn btn-ghost btn-sm" (click)="reportOpen.set(true)"><app-icon name="flag" [size]="16" />Reportar</button>
+          }
+        </div>
+      </article>
+
+      <aside class="side">
+        <div class="card action">
+          @if (data()!.is_owner) {
+            <h3>Tu publicación</h3>
+            <p class="muted">{{ j.applications_count ?? 0 }} {{ (j.applications_count ?? 0) === 1 ? 'persona se ha postulado' : 'personas se han postulado' }}.</p>
+            <a routerLink="/panel/mis-trabajos" [queryParams]="{ ver: j.id }" class="btn btn-primary btn-block">Ver postulaciones</a>
+            <a [routerLink]="['/publicar', j.id]" class="btn btn-block">Editar publicación</a>
+          } @else if (data()!.my_application; as a) {
+            @if (a.is_invitation && (a.status === 'sent' || a.status === 'seen')) {
+              <h3>Te invitaron a este trabajo</h3>
+              <p class="muted">{{ clientName() }} vio tu perfil y quiere contratarte.</p>
+              <button type="button" class="btn btn-ok btn-block" (click)="respondInvitation('accepted')"><app-icon name="check" />Aceptar invitación</button>
+              <button type="button" class="btn btn-danger btn-block" (click)="respondInvitation('rejected')">Rechazar</button>
+            } @else {
+              <h3>{{ a.is_invitation ? 'Invitación' : 'Tu postulación' }}</h3>
+              <div class="state" [attr.data-s]="a.status">
+                <app-icon [name]="a.status === 'accepted' ? 'check-circle' : a.status === 'rejected' ? 'x' : 'clock'" />
+                <span>{{ APP_STATUS[a.status] }}</span>
+              </div>
+              @if (a.status === 'accepted') {
+                <p class="muted">Ya puedes coordinar con el contratante.</p>
+                <a routerLink="/panel/contratos" class="btn btn-ok btn-block"><app-icon name="whatsapp" />Ir a contrataciones</a>
+              } @else {
+                <p class="muted">Te avisamos en Mis postulaciones cuando el contratante responda.</p>
+                <a routerLink="/panel/postulaciones" class="btn btn-block">Ver mis postulaciones</a>
+              }
+            }
+          } @else if (auth.role() === 'client' || auth.role() === 'admin') {
+            <h3>¿Buscas maestros?</h3>
+            <p class="muted">Esta es la publicación de otro contratante.</p>
+            <a routerLink="/maestros" class="btn btn-primary btn-block">Buscar maestros</a>
+          } @else if (j.status === 'open') {
+            <h3>¿Te interesa?</h3>
+            <p class="muted">Envía tu propuesta. Si te aceptan, verás el WhatsApp del contratante.</p>
+            <button type="button" class="btn btn-accent btn-lg btn-block" (click)="openApply()">Postularme a este trabajo</button>
+          }
+        </div>
+
+        <div class="card client">
+          <h3>Quién contrata</h3>
+          <div class="c-row">
+            <app-avatar [name]="clientName()" [src]="j.client?.logo_url || j.client?.user?.photo_url" [size]="48" [verified]="!!j.client?.user?.is_verified" />
+            <div>
+              <strong>{{ clientName() }}</strong>
+              <span class="muted small">{{ j.client?.type === 'company' ? 'Empresa' : 'Persona natural' }}{{ j.client?.user?.is_verified ? ', verificada' : '' }}</span>
+            </div>
+          </div>
+          @if (j.client?.description) { <p class="small muted">{{ j.client?.description }}</p> }
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <app-modal [open]="applyOpen()" title="Postularme a este trabajo" (closed)="applyOpen.set(false)">
+    <form class="stack" (ngSubmit)="apply()">
+      <div class="mini">
+        <strong>{{ j.title }}</strong>
+        <span class="muted small">{{ j.city?.name }}, presupuesto {{ j.budget | money }} {{ suffix() }}</span>
+      </div>
+      <div class="field">
+        <label for="rate">Tu propuesta de pago ({{ suffix() || 'total' }})</label>
+        <div class="input-prefix"><span>$</span><input id="rate" class="input num" type="number" min="0" step="1000" name="rate" [(ngModel)]="applyRate" /></div>
+        <span class="hint">Puedes dejar el mismo valor del presupuesto o proponer otro.</span>
+      </div>
+      <div class="field">
+        <label for="msg">Mensaje para el contratante</label>
+        <textarea id="msg" class="textarea" name="msg" [(ngModel)]="applyMsg" maxlength="1000"></textarea>
+        <span class="hint">{{ applyMsg.length }} / 1000. Cuenta tu experiencia y cuándo puedes empezar.</span>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="sending()">
+        @if (sending()) { <span class="spinner"></span> } Enviar postulación
+      </button>
+    </form>
+  </app-modal>
+
+  <app-modal [open]="reportOpen()" title="Reportar esta oferta" (closed)="reportOpen.set(false)">
+    <form class="stack" (ngSubmit)="sendReport()">
+      <div class="field">
+        <label for="rep">¿Qué pasa con esta oferta?</label>
+        <textarea id="rep" class="textarea" name="reason" [(ngModel)]="reportReason" placeholder="Ej: piden dinero por adelantado para darme el trabajo"></textarea>
+        <span class="hint">Mínimo 10 caracteres.</span>
+      </div>
+      <button class="btn btn-dark btn-block" type="submit" [disabled]="reportReason.trim().length < 10">Enviar reporte</button>
+    </form>
+  </app-modal>
+} @else {
+  <div class="container page"><div class="sk" style="height:520px;border-radius:18px"></div></div>
+}

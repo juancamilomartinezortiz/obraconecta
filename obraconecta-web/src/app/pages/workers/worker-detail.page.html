@@ -1,0 +1,217 @@
+@if (notFound()) {
+  <div class="container page">
+    <app-empty icon="user" title="Este perfil no existe o ya no está disponible" text="Puede que el maestro haya cerrado su cuenta.">
+      <a routerLink="/maestros" class="btn btn-primary">Buscar otros maestros</a>
+    </app-empty>
+  </div>
+} @else if (w(); as w) {
+  <section class="band blueprint">
+    <div class="container">
+      <a routerLink="/maestros" class="back light"><app-icon name="arrow-left" [size]="16" />Maestros</a>
+    </div>
+  </section>
+
+  <div class="container wrap">
+    <header class="profile-head card">
+      <app-avatar class="big" [name]="w.user?.name" [src]="w.user?.photo_url" [size]="112" [verified]="!!w.user?.is_verified" />
+      <div class="ph-main">
+        <div class="ph-title">
+          <h1>{{ w.user?.name }}</h1>
+          @if (w.user?.is_verified) { <span class="tag ok"><app-icon name="shield" [size]="14" />Identidad verificada</span> }
+        </div>
+        <p class="ph-sub">
+          {{ w.specialties?.[0]?.name || 'Construcción' }} con {{ w.years_experience }} años de experiencia
+          <span class="where"><app-icon name="map-pin" [size]="16" />{{ w.user?.city?.name || 'Cauca' }}</span>
+        </p>
+        <div class="ph-rate">
+          @if (rating() > 0) {
+            <app-stars [rating]="rating()" [size]="18" />
+            <strong class="num">{{ ratingText() }}</strong>
+            <a href="#resenas">{{ totalReviews() }} {{ totalReviews() === 1 ? 'reseña' : 'reseñas' }}</a>
+          } @else {
+            <span class="muted">Aún sin reseñas</span>
+          }
+          @if (w.availability === 'available') {
+            <span class="tag ok"><span class="dot"></span>Disponible{{ w.available_from ? ' desde ' + (w.available_from | shortDate) : '' }}</span>
+          } @else {
+            <span class="tag warn"><span class="dot"></span>Ocupado por ahora</span>
+          }
+        </div>
+      </div>
+
+      <div class="ph-actions">
+        @if (isMe()) {
+          <a routerLink="/panel/perfil" class="btn btn-primary btn-lg"><app-icon name="edit" />Editar mi perfil</a>
+        } @else if (data()!.can_contact && wa()) {
+          <a [href]="wa()" target="_blank" rel="noopener" class="btn btn-ok btn-lg"><app-icon name="whatsapp" />Escribir por WhatsApp</a>
+        } @else if (auth.role() === 'client') {
+          <button type="button" class="btn btn-primary btn-lg" (click)="openInvite()"><app-icon name="send" />Invitar a un trabajo</button>
+        } @else if (!auth.isLoggedIn()) {
+          <a routerLink="/ingresar" [queryParams]="{ volver: '/maestros/' + w.id }" class="btn btn-primary btn-lg">Ingresa para contactarlo</a>
+        }
+        @if (auth.isLoggedIn() && !isMe()) {
+          <button type="button" class="btn btn-ghost btn-sm report" (click)="reportOpen.set(true)"><app-icon name="flag" [size]="16" />Reportar perfil</button>
+        }
+      </div>
+    </header>
+
+    <div class="cols">
+      <div class="main-col">
+        <section class="block">
+          <h2>Sobre su trabajo</h2>
+          <p class="bio">{{ w.bio || 'Este maestro todavía no escribió su presentación.' }}</p>
+          <div class="specs">
+            @for (s of w.specialties ?? []; track s.id) {
+              <span class="spec"><app-icon [name]="s.icon || 'hardhat'" [size]="20" />{{ s.name }}</span>
+            }
+          </div>
+        </section>
+
+        <section class="block">
+          <div class="b-head">
+            <h2>Obras realizadas</h2>
+            <span class="muted">{{ w.portfolio_items?.length ?? 0 }} {{ (w.portfolio_items?.length ?? 0) === 1 ? 'obra' : 'obras' }}</span>
+          </div>
+          @if (w.portfolio_items?.length) {
+            <div class="gallery">
+              @for (p of w.portfolio_items; track p.id) {
+                <button type="button" class="work" (click)="open(p)">
+                  <app-cover [src]="p.photos?.[0]?.url" [icon]="mainIcon()" [alt]="p.title" />
+                  <span class="w-info">
+                    <strong>{{ p.title }}</strong>
+                    <span>{{ p.city?.name }}@if (p.work_date) {, {{ p.work_date | shortDate: true }}}</span>
+                  </span>
+                  @if ((p.photos?.length ?? 0) > 1) { <span class="w-count"><app-icon name="image" [size]="14" />{{ p.photos!.length }}</span> }
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="muted">Todavía no ha subido fotos de sus obras.</p>
+          }
+        </section>
+
+        <section class="block" id="resenas">
+          <h2>Lo que dicen sus clientes</h2>
+          @if (totalReviews()) {
+            <div class="summary">
+              <div class="big-rate">
+                <strong class="num">{{ ratingText() }}</strong>
+                <app-stars [rating]="rating()" [size]="18" />
+                <span>{{ totalReviews() }} {{ totalReviews() === 1 ? 'reseña' : 'reseñas' }}</span>
+              </div>
+              <div class="bars">
+                @for (s of [5,4,3,2,1]; track s) {
+                  <div class="bar-row">
+                    <span class="num">{{ s }}</span>
+                    <span class="bar"><span [style.width.%]="bar(s)"></span></span>
+                    <span class="num pct">{{ data()!.rating_distribution[s] ?? 0 }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+            <ul class="reviews">
+              @for (r of data()!.reviews; track r.id) {
+                <li>
+                  <app-avatar [name]="r.reviewer?.client_profile?.business_name || r.reviewer?.name" [src]="r.reviewer?.photo_url" [size]="40" />
+                  <div>
+                    <div class="r-head">
+                      <strong>{{ r.reviewer?.client_profile?.business_name || r.reviewer?.name }}</strong>
+                      <span class="muted small">{{ r.created_at | timeAgo }}</span>
+                    </div>
+                    <app-stars [rating]="r.rating" [size]="14" />
+                    @if (r.comment) { <p>{{ r.comment }}</p> }
+                  </div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="muted">Cuando termine su primer trabajo en ObraConecta, aquí aparecerá la calificación de su cliente.</p>
+          }
+        </section>
+      </div>
+
+      <aside class="side-col">
+        <div class="facts card">
+          <h3>Datos del maestro</h3>
+          <dl>
+            <div><dt><app-icon name="money" [size]="18" />Tarifa por día</dt><dd class="num">{{ w.daily_rate | shortMoney }}</dd></div>
+            <div><dt><app-icon name="ruler" [size]="18" />Experiencia</dt><dd class="num">{{ w.years_experience }} años</dd></div>
+            <div><dt><app-icon name="check-circle" [size]="18" />Trabajos en ObraConecta</dt><dd class="num">{{ w.jobs_done }}</dd></div>
+            <div class="zones"><dt><app-icon name="map-pin" [size]="18" />Zonas donde trabaja</dt><dd>{{ w.work_zones || w.user?.city?.name || 'Sin especificar' }}</dd></div>
+          </dl>
+          @if (data()!.can_contact && w.user?.phone) {
+            <div class="contact"><app-icon name="phone" [size]="18" /><span>{{ w.user?.phone }}</span></div>
+          } @else if (!isMe()) {
+            <p class="privacy"><app-icon name="shield" [size]="16" />El celular se muestra cuando aceptas su postulación o él acepta tu invitación.</p>
+          }
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Galería -->
+  <app-modal [open]="!!viewing()" [title]="viewing()?.title ?? ''" [wide]="true" (closed)="viewing.set(null)">
+    @if (viewing(); as v) {
+      <div class="lightbox">
+        <div class="lb-stage">
+          <app-cover [src]="v.photos?.[photoIdx()]?.url" [icon]="mainIcon()" [iconSize]="80" [alt]="v.title" />
+          @if ((v.photos?.length ?? 0) > 1) {
+            <button type="button" class="lb-nav prev" aria-label="Foto anterior" (click)="move(-1)"><app-icon name="chevron-left" /></button>
+            <button type="button" class="lb-nav next" aria-label="Foto siguiente" (click)="move(1)"><app-icon name="chevron-right" /></button>
+            <span class="lb-count num">{{ photoIdx() + 1 }} / {{ v.photos!.length }}</span>
+          }
+        </div>
+        <p class="muted">{{ v.city?.name }}@if (v.work_date) {, {{ v.work_date | shortDate: true }}}</p>
+        @if (v.description) { <p>{{ v.description }}</p> }
+      </div>
+    }
+  </app-modal>
+
+  <!-- Invitar -->
+  <app-modal [open]="inviteOpen()" title="Invitar a un trabajo" (closed)="inviteOpen.set(false)">
+    @if (myJobs() === null) {
+      <div class="sk" style="height:120px"></div>
+    } @else if (myJobs()!.length === 0) {
+      <app-empty icon="briefcase" title="No tienes trabajos abiertos" text="Publica primero el trabajo y luego invita a este maestro.">
+        <a routerLink="/publicar" class="btn btn-primary">Publicar trabajo</a>
+      </app-empty>
+    } @else {
+      <form class="stack" (ngSubmit)="sendInvite()">
+        <fieldset class="field jobs-pick">
+          <legend class="label">¿A cuál trabajo lo invitas?</legend>
+          @for (j of myJobs(); track j.id) {
+            <label class="pick" [class.on]="inviteJob === j.id">
+              <input type="radio" name="job" [value]="j.id" [(ngModel)]="inviteJob" />
+              <span><strong>{{ j.title }}</strong><small>{{ j.city?.name }}, inicia {{ j.start_date | shortDate }}</small></span>
+            </label>
+          }
+        </fieldset>
+        <div class="field">
+          <label for="inv-msg">Mensaje</label>
+          <textarea id="inv-msg" class="textarea" name="msg" [(ngModel)]="inviteMsg" maxlength="1000"></textarea>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="!inviteJob || sending()">
+          @if (sending()) { <span class="spinner"></span> } Enviar invitación
+        </button>
+      </form>
+    }
+  </app-modal>
+
+  <!-- Reportar -->
+  <app-modal [open]="reportOpen()" title="Reportar este perfil" (closed)="reportOpen.set(false)">
+    <form class="stack" (ngSubmit)="sendReport()">
+      <p class="muted">Cuéntanos qué pasó. El equipo de ObraConecta revisa cada reporte.</p>
+      <div class="field">
+        <label for="rep">Motivo</label>
+        <textarea id="rep" class="textarea" name="reason" [(ngModel)]="reportReason" minlength="10" placeholder="Ej: la información del perfil es falsa"></textarea>
+        <span class="hint">Mínimo 10 caracteres.</span>
+      </div>
+      <button class="btn btn-dark btn-block" type="submit" [disabled]="reportReason.trim().length < 10">Enviar reporte</button>
+    </form>
+  </app-modal>
+} @else {
+  <div class="container page">
+    <div class="sk" style="height:180px;border-radius:18px;margin-bottom:20px"></div>
+    <div class="sk" style="height:420px;border-radius:18px"></div>
+  </div>
+}

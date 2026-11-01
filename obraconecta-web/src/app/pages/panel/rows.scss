@@ -1,0 +1,27 @@
+.tabs { margin-bottom: 18px; }
+.tabs .n { font-size: .78rem; padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); min-width: 22px; text-align: center; }
+.tabs .chip.on .n { background: rgb(255 255 255 / .2); color: #fff; }
+.rows { display: flex; flex-direction: column; gap: 12px; }
+.row { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.row.invite { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.inv-flag { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: .88rem; color: var(--accent-ink); }
+.r-main { display: grid; grid-template-columns: auto 1fr; gap: 14px; }
+@media (min-width: 640px) { .r-main { grid-template-columns: auto 1fr auto; align-items: start; } }
+.ic { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+.r-text { min-width: 0; }
+.r-title { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; color: var(--ink); text-decoration: none; }
+.r-title:hover { color: var(--primary); text-decoration: underline; }
+.r-meta { margin: 2px 0 4px; font-size: .88rem; color: var(--ink-2); }
+.r-pay { margin: 0; font-size: .9rem; color: var(--ink-2); }
+.r-pay strong { color: var(--ink); }
+.status { grid-column: 1 / -1; justify-self: start; font-weight: 700; font-size: .82rem; padding: 4px 12px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+@media (min-width: 640px) { .status { grid-column: auto; } }
+.status[data-s='sent'] { background: var(--primary-soft); color: var(--primary); }
+.status[data-s='seen'] { background: var(--accent-soft); color: var(--accent-ink); }
+.status[data-s='accepted'] { background: var(--ok-soft); color: var(--ok); }
+.status[data-s='rejected'] { background: var(--danger-soft); color: var(--danger); }
+.track { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; font-size: .78rem; font-weight: 600; color: var(--ink-3); }
+.track li { border-top: 3px solid var(--line); padding-top: 6px; }
+.track li.done { border-top-color: var(--ok); color: var(--ok); }
+.track li.bad { border-top-color: var(--danger); color: var(--danger); }
+.r-actions { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line-soft); padding-top: 14px; }

@@ -1,0 +1,171 @@
+<!-- ============ PORTADA: un plano de obra ============ -->
+<section class="hero blueprint">
+  <div class="container hero-grid">
+    <div class="copy">
+      <p class="kicker"><app-icon name="map-pin" [size]="16" />Popayán y todo el Cauca</p>
+
+      <div class="measured">
+        <h1>Maestros de obra de confianza, cerca de tu obra.</h1>
+        <!-- Cota horizontal debajo del titular -->
+        <div class="cota" aria-hidden="true">
+          <span class="tick"></span><span class="line"></span><span class="val">obras reales, calificadas por quien contrató</span><span class="line"></span><span class="tick"></span>
+        </div>
+      </div>
+
+      <p class="lead">Busca por oficio y barrio, mira las obras que cada maestro ya hizo y contrata por WhatsApp. Si eres maestro, crea tu perfil gratis y recibe trabajos de tu zona.</p>
+
+      <form class="search" (ngSubmit)="search()" role="search" aria-label="Buscar maestros">
+        <label class="sr-only" for="h-spec">Oficio</label>
+        <select id="h-spec" class="select" [(ngModel)]="specialtyId" name="specialty">
+          <option value="">Todos los oficios</option>
+          @for (s of catalog.specialties(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+        </select>
+        <label class="sr-only" for="h-city">Ciudad</label>
+        <select id="h-city" class="select" [(ngModel)]="cityId" name="city">
+          <option value="">Cualquier ciudad</option>
+          @for (c of catalog.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+        </select>
+        <button class="btn btn-accent btn-lg" type="submit"><app-icon name="search" />Buscar maestros</button>
+      </form>
+
+      <p class="alt">
+        ¿Eres maestro, oficial o especialista?
+        @if (auth.role() === 'worker') {
+          <a routerLink="/trabajos">Ver trabajos disponibles</a>
+        } @else {
+          <a routerLink="/registro" [queryParams]="{ rol: 'worker' }">Crea tu perfil y consigue trabajo</a>
+        }
+      </p>
+    </div>
+
+    <!-- Ficha del maestro mejor calificado, acotada como en un plano -->
+    <div class="sheet" aria-label="Maestro destacado">
+      @if (featured(); as f) {
+        <a class="ficha" [routerLink]="['/maestros', f.id]">
+          <span class="pin-label">Mejor calificado esta semana</span>
+          <div class="f-top">
+            <app-avatar [name]="f.user?.name" [src]="f.user?.photo_url" [size]="72" [verified]="!!f.user?.is_verified" />
+            <div>
+              <h2>{{ f.user?.name }}</h2>
+              <p>{{ f.specialties?.[0]?.name }} en {{ f.user?.city?.name }}</p>
+              <app-stars [rating]="f.rating_avg" [size]="16" />
+            </div>
+          </div>
+          <p class="f-bio">{{ f.bio }}</p>
+          <div class="f-specs">
+            @for (s of f.specialties ?? []; track s.id) {
+              <span><app-icon [name]="s.icon || 'hardhat'" [size]="16" />{{ s.name }}</span>
+            }
+          </div>
+        </a>
+        <!-- Cotas que miden la ficha -->
+        <div class="dim dim-right" aria-hidden="true"><span>{{ f.years_experience }} años</span></div>
+        <div class="dim dim-bottom" aria-hidden="true"><span>{{ featuredRating() }} de 5 en {{ f.jobs_done }} trabajos</span></div>
+      } @else {
+        <div class="ficha skel"><div class="sk" style="height:72px;width:72px;border-radius:50%"></div><div class="sk" style="height:18px;width:60%"></div><div class="sk" style="height:14px;width:90%"></div><div class="sk" style="height:14px;width:80%"></div></div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============ OFICIOS ============ -->
+<section class="section">
+  <div class="container">
+    <div class="head">
+      <h2>¿Qué necesitas construir o arreglar?</h2>
+      <a routerLink="/maestros" class="more">Ver todos los maestros</a>
+    </div>
+    <div class="trades">
+      @for (s of catalog.specialties(); track s.id) {
+        <a class="trade" routerLink="/maestros" [queryParams]="{ especialidad: s.id }">
+          <app-icon [name]="s.icon || 'hardhat'" [size]="30" [stroke]="1.5" />
+          <strong>{{ s.name }}</strong>
+          <span>{{ s.workers_count ?? 0 }} {{ s.workers_count === 1 ? 'maestro' : 'maestros' }}</span>
+        </a>
+      } @empty {
+        @for (i of [1,2,3,4,5,6,7,8,9,10]; track i) { <div class="trade sk" style="height:118px"></div> }
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============ CÓMO FUNCIONA (es un proceso: los pasos sí van numerados) ============ -->
+<section class="section how-wrap">
+  <div class="container how">
+    <div class="how-col">
+      <span class="who-tag"><app-icon name="roof" [size]="18" />Si vas a construir</span>
+      <h2>Contrata en tres pasos</h2>
+      <ol class="steps">
+        <li><strong>Publica lo que necesitas.</strong> Oficio, barrio, fecha y presupuesto. Toma menos de dos minutos.</li>
+        <li><strong>Compara a los que se postulan.</strong> Mira sus obras, años de experiencia y lo que dicen otros clientes.</li>
+        <li><strong>Acepta y escríbele por WhatsApp.</strong> Al terminar, califica el trabajo para ayudar a otros.</li>
+      </ol>
+      <a [routerLink]="auth.role() === 'client' ? '/publicar' : '/registro'" [queryParams]="auth.role() === 'client' ? {} : { rol: 'client' }" class="btn btn-primary">Publicar un trabajo</a>
+    </div>
+    <div class="how-col dark">
+      <span class="who-tag"><app-icon name="hardhat" [size]="18" />Si eres maestro</span>
+      <h2>Consigue trabajo sin depender del voz a voz</h2>
+      <ol class="steps">
+        <li><strong>Crea tu perfil gratis.</strong> Tus oficios, tu zona y fotos de las obras que ya hiciste.</li>
+        <li><strong>Postúlate a trabajos de tu zona.</strong> O recibe invitaciones directas de constructoras.</li>
+        <li><strong>Gana reputación.</strong> Cada trabajo bien calificado te pone más arriba en las búsquedas.</li>
+      </ol>
+      <a [routerLink]="auth.role() === 'worker' ? '/trabajos' : '/registro'" [queryParams]="auth.role() === 'worker' ? {} : { rol: 'worker' }" class="btn btn-accent">Crear mi perfil de maestro</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MAESTROS DESTACADOS ============ -->
+<section class="section">
+  <div class="container">
+    <div class="head">
+      <h2>Maestros con las mejores calificaciones</h2>
+      <a routerLink="/maestros" class="more">Buscar por oficio y ciudad</a>
+    </div>
+    <div class="cards">
+      @if (workers(); as list) {
+        @for (w of list.slice(1, 5); track w.id) { <app-worker-card [w]="w" /> }
+      } @else {
+        @for (i of [1,2,3,4]; track i) { <div class="sk" style="height:300px;border-radius:18px"></div> }
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRABAJOS RECIENTES ============ -->
+<section class="section">
+  <div class="container">
+    <div class="head">
+      <h2>Trabajos publicados recientemente</h2>
+      <a routerLink="/trabajos" class="more">Ver todos los trabajos</a>
+    </div>
+    <div class="list">
+      @if (jobs(); as list) {
+        @for (j of list; track j.id) { <app-job-card [j]="j" /> }
+      } @else {
+        @for (i of [1,2,3]; track i) { <div class="sk" style="height:150px;border-radius:18px"></div> }
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============ CIFRAS + CIERRE ============ -->
+<section class="section">
+  <div class="container">
+    <div class="closing">
+      <div class="figures">
+        <div><strong class="num">{{ stats()?.workers ?? '—' }}</strong><span>maestros registrados</span></div>
+        <div><strong class="num">{{ stats()?.open_jobs ?? '—' }}</strong><span>trabajos abiertos hoy</span></div>
+        <div><strong class="num">{{ stats()?.finished_contracts ?? '—' }}</strong><span>obras terminadas</span></div>
+        <div><strong class="num">{{ stats() ? (stats()!.avg_rating + '').replace('.', ',') : '—' }}</strong><span>calificación promedio</span></div>
+      </div>
+      <div class="cta">
+        <h2>La próxima obra del Cauca empieza aquí.</h2>
+        <div class="cta-btns">
+          <a routerLink="/maestros" class="btn btn-accent btn-lg">Buscar maestros</a>
+          <a routerLink="/trabajos" class="btn btn-lg ghost-light">Buscar trabajo</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

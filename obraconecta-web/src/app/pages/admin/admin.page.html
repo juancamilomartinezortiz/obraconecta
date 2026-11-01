@@ -1,0 +1,265 @@
+<div class="container page">
+  <div class="page-head">
+    <div>
+      <h1>Administración</h1>
+      <p>Usuarios, verificaciones, reportes y catálogos de ObraConecta.</p>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    @for (t of tabs; track t.v) {
+      <button type="button" role="tab" [class.on]="tab() === t.v" [attr.aria-selected]="tab() === t.v" (click)="go(t.v)">
+        <app-icon [name]="t.icon" [size]="18" />{{ t.label }}
+        @if (badge(t.v)) { <span class="badge num">{{ badge(t.v) }}</span> }
+      </button>
+    }
+  </div>
+
+  @switch (tab()) {
+    <!-- ================= RESUMEN ================= -->
+    @case ('resumen') {
+      @if (stats(); as s) {
+        <div class="tiles">
+          <div class="tile"><span>Maestros</span><strong class="num">{{ s.users.workers }}</strong></div>
+          <div class="tile"><span>Contratantes</span><strong class="num">{{ s.users.clients }}</strong></div>
+          <div class="tile"><span>Ofertas abiertas</span><strong class="num">{{ s.jobs.open }}</strong></div>
+          <div class="tile"><span>Postulaciones</span><strong class="num">{{ s.applications }}</strong></div>
+          <div class="tile"><span>Contratos en curso</span><strong class="num">{{ s.contracts.active }}</strong></div>
+          <div class="tile"><span>Contratos terminados</span><strong class="num">{{ s.contracts.finished }}</strong></div>
+          <button type="button" class="tile act" [class.hot]="s.pending_verifications" (click)="go('verificaciones')"><span>Verificaciones pendientes</span><strong class="num">{{ s.pending_verifications }}</strong></button>
+          <button type="button" class="tile act" [class.hot]="s.pending_reports" (click)="go('reportes')"><span>Reportes pendientes</span><strong class="num">{{ s.pending_reports }}</strong></button>
+        </div>
+
+        <section class="panel chart-panel">
+          <div class="ch-head">
+            <h2>Actividad de los últimos 6 meses</h2>
+            <div class="legend">
+              <span><i class="k-users"></i>Usuarios nuevos</span>
+              <span><i class="k-jobs"></i>Ofertas publicadas</span>
+              <span><i class="k-contracts"></i>Contrataciones</span>
+            </div>
+          </div>
+          <div class="chart" role="img" aria-label="Gráfico de barras de usuarios, ofertas y contrataciones por mes">
+            @for (m of s.monthly; track m.key) {
+              <div class="month">
+                <div class="bars">
+                  <span class="b k-users" [style.height.%]="h(m.users)" [title]="m.users + ' usuarios'"><em class="num">{{ m.users }}</em></span>
+                  <span class="b k-jobs" [style.height.%]="h(m.jobs)" [title]="m.jobs + ' ofertas'"><em class="num">{{ m.jobs }}</em></span>
+                  <span class="b k-contracts" [style.height.%]="h(m.contracts)" [title]="m.contracts + ' contrataciones'"><em class="num">{{ m.contracts }}</em></span>
+                </div>
+                <span class="m-label">{{ m.month }}</span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <div class="split">
+          <section class="panel">
+            <h2 class="h">Estado de las ofertas</h2>
+            <div class="stack-bar">
+              <span class="sb open" [style.flex]="s.jobs.open || 0.001"></span>
+              <span class="sb paused" [style.flex]="s.jobs.paused || 0.001"></span>
+              <span class="sb closed" [style.flex]="s.jobs.closed || 0.001"></span>
+            </div>
+            <ul class="kv">
+              <li><i class="open"></i>Abiertas <strong class="num">{{ s.jobs.open }}</strong></li>
+              <li><i class="paused"></i>Pausadas <strong class="num">{{ s.jobs.paused }}</strong></li>
+              <li><i class="closed"></i>Cerradas <strong class="num">{{ s.jobs.closed }}</strong></li>
+            </ul>
+          </section>
+          <section class="panel">
+            <h2 class="h">Confianza</h2>
+            <ul class="kv">
+              <li>Usuarios verificados <strong class="num">{{ s.users.verified }}</strong></li>
+              <li>Usuarios bloqueados <strong class="num">{{ s.users.blocked }}</strong></li>
+              <li>Contratos cancelados <strong class="num">{{ s.contracts.cancelled }}</strong></li>
+            </ul>
+          </section>
+        </div>
+      } @else {
+        <div class="tiles">@for (i of [1,2,3,4,5,6,7,8]; track i) { <div class="sk" style="height:92px"></div> }</div>
+      }
+    }
+
+    <!-- ================= USUARIOS ================= -->
+    @case ('usuarios') {
+      <div class="toolbar">
+        <label class="sbox"><app-icon name="search" /><span class="sr-only">Buscar usuario</span>
+          <input class="input" type="search" placeholder="Nombre o correo" [(ngModel)]="userQ" (ngModelChange)="searchUsers()" />
+        </label>
+        <select class="select" aria-label="Rol" [(ngModel)]="userRole" (ngModelChange)="userPage = 1; loadUsers()">
+          <option value="">Todos los roles</option>
+          <option value="worker">Maestros</option>
+          <option value="client">Contratantes</option>
+          <option value="admin">Administradores</option>
+        </select>
+      </div>
+      @if (users(); as pg) {
+        <div class="table-wrap card">
+          <table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Ciudad</th><th>Celular</th><th>Registro</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+              @for (u of pg.data; track u.id) {
+                <tr [class.blocked]="u.status === 'blocked'">
+                  <td><div class="u"><app-avatar [name]="u.name" [src]="u.photo_url" [size]="36" [verified]="u.is_verified" /><div><strong>{{ u.name }}</strong><span>{{ u.email }}</span></div></div></td>
+                  <td><span class="tag" [class.blue]="u.role === 'worker'" [class.yellow]="u.role === 'client'">{{ roleName(u.role) }}</span></td>
+                  <td>{{ u.city?.name || '—' }}</td>
+                  <td class="num">{{ u.phone || '—' }}</td>
+                  <td>{{ u.created_at | timeAgo }}</td>
+                  <td>@if (u.status === 'active') { <span class="tag ok">Activo</span> } @else { <span class="tag danger">Bloqueado</span> }</td>
+                  <td class="right">
+                    @if (u.role !== 'admin') {
+                      <button type="button" class="btn btn-sm" [class.btn-danger]="u.status === 'active'" (click)="toggleBlock(u)">{{ u.status === 'active' ? 'Bloquear' : 'Desbloquear' }}</button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="none">No hay usuarios con ese filtro.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-pager [page]="pg.current_page" [last]="pg.last_page" (go)="pageUsers($event)" />
+      } @else {
+        <div class="sk" style="height:360px;border-radius:16px"></div>
+      }
+    }
+
+    <!-- ================= VERIFICACIONES ================= -->
+    @case ('verificaciones') {
+      <div class="toolbar">
+        <select class="select narrow" aria-label="Estado" [(ngModel)]="verifStatus" (ngModelChange)="loadVerifs()">
+          <option value="pending">Pendientes</option>
+          <option value="approved">Aprobadas</option>
+          <option value="rejected">Rechazadas</option>
+          <option value="all">Todas</option>
+        </select>
+      </div>
+      @if (verifs() === null) {
+        <div class="sk" style="height:200px;border-radius:16px"></div>
+      } @else if (verifs()!.length) {
+        <ul class="queue">
+          @for (v of verifs(); track v.id) {
+            <li class="card">
+              <app-avatar [name]="v.user?.name" [src]="v.user?.photo_url" [size]="44" />
+              <div class="q-main">
+                <strong>{{ v.user?.name }}</strong>
+                <span class="muted small">{{ roleName(v.user?.role ?? '') }}, {{ v.user?.city?.name || 'sin ciudad' }}. Envió {{ v.type === 'id_card' ? 'cédula' : (v.title || 'certificado') }} {{ v.created_at | timeAgo }}.</span>
+              </div>
+              <span class="tag" [class.yellow]="v.status === 'pending'" [class.ok]="v.status === 'approved'" [class.danger]="v.status === 'rejected'">
+                {{ v.status === 'pending' ? 'Pendiente' : v.status === 'approved' ? 'Aprobada' : 'Rechazada' }}
+              </span>
+              <button type="button" class="btn btn-sm btn-primary" (click)="openDoc(v)"><app-icon name="eye" [size]="16" />Revisar</button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <app-empty icon="shield" title="No hay verificaciones en esta lista" text="Cuando un usuario envíe su cédula o un certificado, aparecerá aquí." />
+      }
+    }
+
+    <!-- ================= REPORTES ================= -->
+    @case ('reportes') {
+      <div class="toolbar">
+        <select class="select narrow" aria-label="Estado" [(ngModel)]="reportStatus" (ngModelChange)="loadReports()">
+          <option value="pending">Pendientes</option>
+          <option value="resolved">Resueltos</option>
+          <option value="dismissed">Descartados</option>
+          <option value="all">Todos</option>
+        </select>
+      </div>
+      @if (reports() === null) {
+        <div class="sk" style="height:200px;border-radius:16px"></div>
+      } @else if (reports()!.length) {
+        <ul class="queue">
+          @for (r of reports(); track r.id) {
+            <li class="card report">
+              <span class="r-ic"><app-icon name="flag" [size]="20" /></span>
+              <div class="q-main">
+                <strong>
+                  @if (targetLink(r); as link) { <a [routerLink]="link">{{ targetName(r) }}</a> } @else { {{ targetName(r) }} }
+                </strong>
+                <p>"{{ r.reason }}"</p>
+                <span class="muted small">Reportado por {{ r.reporter?.name }} {{ r.created_at | timeAgo }}</span>
+              </div>
+              @if (r.status === 'pending') {
+                <div class="r-btns">
+                  <button type="button" class="btn btn-sm btn-primary" (click)="setReport(r, 'resolved')">Marcar resuelto</button>
+                  <button type="button" class="btn btn-sm btn-ghost" (click)="setReport(r, 'dismissed')">Descartar</button>
+                </div>
+              } @else {
+                <span class="tag" [class.ok]="r.status === 'resolved'">{{ r.status === 'resolved' ? 'Resuelto' : 'Descartado' }}</span>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <app-empty icon="flag" title="No hay reportes en esta lista" text="Los reportes de perfiles, ofertas o reseñas llegan aquí." />
+      }
+    }
+
+    <!-- ================= CATÁLOGOS ================= -->
+    @case ('catalogos') {
+      <div class="split">
+        <section class="panel">
+          <h2 class="h">Oficios</h2>
+          <form class="add" (ngSubmit)="addSpecialty()">
+            <input class="input" name="sp" [(ngModel)]="newSpecialty" placeholder="Nuevo oficio, ej: Drywall" aria-label="Nuevo oficio" />
+            <button class="btn btn-primary" type="submit" [disabled]="!newSpecialty.trim()">Agregar</button>
+          </form>
+          <ul class="cat">
+            @for (s of catalog.specialties(); track s.id) {
+              <li><app-icon [name]="s.icon || 'hardhat'" [size]="18" /><span>{{ s.name }}</span><small class="muted num">{{ s.workers_count ?? 0 }} maestros</small>
+                <button type="button" class="btn-icon" [attr.aria-label]="'Eliminar ' + s.name" (click)="delSpecialty(s.id)"><app-icon name="trash" [size]="16" /></button></li>
+            }
+          </ul>
+        </section>
+        <section class="panel">
+          <h2 class="h">Ciudades</h2>
+          <form class="add" (ngSubmit)="addCity()">
+            <input class="input" name="ci" [(ngModel)]="newCity" placeholder="Ciudad" aria-label="Nueva ciudad" />
+            <input class="input" name="de" [(ngModel)]="newDept" placeholder="Departamento" aria-label="Departamento" />
+            <button class="btn btn-primary" type="submit" [disabled]="!newCity.trim()">Agregar</button>
+          </form>
+          <ul class="cat">
+            @for (c of catalog.cities(); track c.id) {
+              <li><app-icon name="map-pin" [size]="18" /><span>{{ c.name }}</span><small class="muted">{{ c.department }}</small>
+                <button type="button" class="btn-icon" [attr.aria-label]="'Eliminar ' + c.name" (click)="delCity(c.id)"><app-icon name="trash" [size]="16" /></button></li>
+            }
+          </ul>
+        </section>
+      </div>
+    }
+  }
+</div>
+
+<app-modal [open]="!!reviewing()" [title]="'Documento de ' + (reviewing()?.user?.name ?? '')" [wide]="true" (closed)="closeDoc()">
+  @if (reviewing(); as v) {
+    <div class="doc">
+      @if (docUrl()) {
+        @if (docIsPdf()) {
+          <div class="pdf"><app-icon name="file" [size]="40" /><p>El documento es un PDF.</p><a [href]="docUrl()" target="_blank" rel="noopener" class="btn btn-primary">Abrir PDF en otra pestaña</a></div>
+        } @else {
+          <img [src]="docUrl()" alt="Documento enviado" />
+        }
+      } @else {
+        <div class="sk" style="height:320px"></div>
+      }
+      <dl class="doc-info">
+        <div><dt>Tipo</dt><dd>{{ v.type === 'id_card' ? 'Cédula' : (v.title || 'Certificado') }}</dd></div>
+        <div><dt>Correo</dt><dd>{{ v.user?.email }}</dd></div>
+        <div><dt>Celular</dt><dd>{{ v.user?.phone || '—' }}</dd></div>
+      </dl>
+      @if (v.status === 'pending') {
+        <div class="field">
+          <label for="rr">Motivo si la rechazas</label>
+          <input id="rr" class="input" [(ngModel)]="rejectReason" placeholder="Ej: la foto está borrosa, envíala de nuevo" />
+        </div>
+        <div class="doc-actions">
+          <button type="button" class="btn btn-danger" [disabled]="!rejectReason.trim()" (click)="decide('rejected')">Rechazar</button>
+          <button type="button" class="btn btn-ok" (click)="decide('approved')"><app-icon name="check" />Aprobar y dar insignia</button>
+        </div>
+      }
+    </div>
+  }
+</app-modal>
